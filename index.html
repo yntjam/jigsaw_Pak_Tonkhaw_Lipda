@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมต่อจิ๊กซอว์ – แข่งความเร็ว</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef6fc; --card:#ffffff; --primary:#7fb8e6; --primary-dark:#3d86c6;
+    --text:#1f3347; --muted:#6b7f93; --ok:#2ecc71; --warn:#ff9f43; --bad:#e74c3c;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  body{margin:0;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text)}
+  header{background:var(--primary);color:#fff;padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  header h1{margin:0;font-size:1.5rem}
+  nav{display:flex;gap:8px;flex-wrap:wrap}
+  button{font-family:inherit;font-size:1rem;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;background:#e3eef8;color:var(--text)}
+  button:hover{filter:brightness(.95)}
+  button.primary{background:var(--primary-dark);color:#fff}
+  button.big{font-size:1.2rem;padding:12px 28px}
+  header button{background:rgba(255,255,255,.25);color:#fff}
+  main{max-width:1000px;margin:20px auto;padding:0 14px}
+  .card{background:var(--card);border-radius:16px;padding:22px;box-shadow:0 4px 18px rgba(61,134,198,.12)}
+  h2{margin-top:0;color:var(--primary-dark)}
+  label.t{display:block;font-weight:600;margin:14px 0 6px}
+  input[type=text],input:not([type]),select{font-family:inherit;font-size:1rem;padding:8px 10px;border:1px solid #c7dbec;border-radius:8px;width:100%}
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .seg{display:flex;flex-wrap:wrap;gap:8px}
+  .seg label{background:#e3eef8;border-radius:10px;padding:8px 12px;cursor:pointer}
+  .seg label:has(input:checked){background:var(--primary-dark);color:#fff}
+  .seg input{display:none}
+  #preview{display:block;width:160px;height:160px;object-fit:cover;border-radius:10px;margin-top:8px;border:2px solid #c7dbec}
+  .msg{color:var(--bad);min-height:1.2em}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#bbb;vertical-align:middle}
+  .dot.on{background:var(--ok)}
+
+  /* ---------- หน้าเกม ---------- */
+  .gamebar{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:center;background:var(--card);border-radius:12px;padding:10px 16px;margin-bottom:12px}
+  .timer{font-size:1.8rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--primary-dark)}
+  .gamewrap{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start;position:relative}
+  .board{display:grid;width:min(92vw,520px);aspect-ratio:1;gap:2px;background:#fff;padding:2px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.12)}
+  .tile{background-image:var(--img);cursor:pointer;transition:transform .12s;border-radius:2px}
+  .tile:hover{filter:brightness(1.08)}
+  .tile.sel{outline:4px solid var(--warn);z-index:1;transform:scale(.93)}
+  .tile.ok{box-shadow:inset 0 0 0 3px var(--ok)}
+  .side{background:var(--card);border-radius:12px;padding:12px;width:200px;text-align:center}
+  .side img{width:100%;border-radius:8px}
+  .side button{margin-top:10px;width:100%}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:8rem;font-weight:700;color:#fff;background:rgba(31,51,71,.55);z-index:10}
+  #oppBox{background:var(--card);border-radius:12px;padding:8px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:center}
+  .bar{flex:1;height:14px;background:#e3eef8;border-radius:7px;overflow:hidden}
+  .bar>div{height:100%;width:0;background:var(--warn);transition:width .4s}
+
+  .code{font-size:4rem;font-weight:700;letter-spacing:.4em;color:var(--primary-dark);text-align:center}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{padding:8px;border-bottom:1px solid #e3eef8;text-align:left}
+  th{background:#e3eef8}
+  tr:nth-child(1) td:first-child::before{content:"🥇 "}
+  tr:nth-child(2) td:first-child::before{content:"🥈 "}
+  tr:nth-child(3) td:first-child::before{content:"🥉 "}
+  .win{font-size:1.4rem;color:var(--ok);font-weight:700}
+  dialog{border:0;border-radius:16px;padding:22px;width:min(92vw,520px)}
+  dialog::backdrop{background:rgba(0,0,0,.35)}
+  .small{font-size:.9rem;color:var(--muted)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧩 เกมต่อจิ๊กซอว์</h1>
+  <nav>
+    <button data-go="setup">เล่นใหม่</button>
+    <button data-go="board">🏆 ตารางคะแนน</button>
+    <button id="btnDb">⚙️ ฐานข้อมูล <span id="dbStatus" class="dot"></span></button>
+  </nav>
+</header>
+
+<main>
+  <!-- ========== หน้าตั้งค่าเกม ========== -->
+  <section id="scr-setup" class="screen card">
+    <h2>ตั้งค่าเกม</h2>
+
+    <label class="t">โหมดการเล่น</label>
+    <div class="seg">
+      <label><input type="radio" name="mode" value="solo" checked> เล่นคนเดียว</label>
+      <label><input type="radio" name="mode" value="turn"> 2 คน ผลัดกันเล่น (เครื่องเดียว)</label>
+      <label><input type="radio" name="mode" value="online"> 2 คน แข่งพร้อมกัน (2 เครื่อง)</label>
+    </div>
+
+    <div id="roleBox" hidden>
+      <label class="t">ห้องแข่ง</label>
+      <div class="seg">
+        <label><input type="radio" name="role" value="host" checked> สร้างห้องใหม่</label>
+        <label><input type="radio" name="role" value="guest"> เข้าร่วมห้องด้วยรหัส</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div><label class="t">ชื่อผู้เล่น 1</label><input id="name1" maxlength="30" placeholder="เช่น สมชาย"></div>
+      <div id="name2Box" hidden><label class="t">ชื่อผู้เล่น 2</label><input id="name2" maxlength="30" placeholder="เช่น สมหญิง"></div>
+      <div id="codeBox" hidden><label class="t">รหัสห้อง (4 หลัก)</label><input id="roomCodeIn" maxlength="4" inputmode="numeric"></div>
+    </div>
+
+    <div id="puzzleOpts">
+      <div class="row">
+        <div>
+          <label class="t">จำนวนชิ้น</label>
+          <select id="pieces">
+            <option value="9">9 ชิ้น (3×3)</option>
+            <option value="16" selected>16 ชิ้น (4×4)</option>
+            <option value="25">25 ชิ้น (5×5)</option>
+            <option value="36">36 ชิ้น (6×6)</option>
+            <option value="49">49 ชิ้น (7×7)</option>
+            <option value="64">64 ชิ้น (8×8)</option>
+          </select>
+        </div>
+        <div>
+          <label class="t">รูปภาพ (แนบเองได้)</label>
+          <input type="file" id="fileIn" accept="image/*">
+          <img id="preview" alt="ตัวอย่างรูป">
+        </div>
+      </div>
+    </div>
+
+    <div class="btns"><button class="primary big" id="btnStart">เริ่มเกม ▶</button></div>
+    <p class="msg" id="setupMsg"></p>
+  </section>
+
+  <!-- ========== ห้องรอ (โหมดออนไลน์) ========== -->
+  <section id="scr-lobby" class="screen card" hidden>
+    <h2>ห้องแข่ง</h2>
+    <p>บอกรหัสนี้ให้เพื่อนเพื่อเข้าห้อง</p>
+    <div class="code" id="lobbyCode">----</div>
+    <p id="lobbyInfo" style="text-align:center"></p>
+    <div class="btns" style="justify-content:center">
+      <button class="primary big" id="btnHostStart" hidden>เริ่มแข่ง!</button>
+      <button id="btnLeave">ออกจากห้อง</button>
+    </div>
+  </section>
+
+  <!-- ========== หน้าเปลี่ยนตา (โหมดผลัดกันเล่น) ========== -->
+  <section id="scr-turn" class="screen card" hidden style="text-align:center">
+    <h2 id="turnTitle"></h2>
+    <p id="turnText"></p>
+    <button class="primary big" id="btnTurnGo">พร้อมแล้ว เริ่ม!</button>
+  </section>
+
+  <!-- ========== หน้าเล่นเกม ========== -->
+  <section id="scr-game" class="screen" hidden>
+    <div class="gamebar">
+      <div>ผู้เล่น: <b id="gPlayer"></b></div>
+      <div class="timer" id="gTimer">00:00.0</div>
+      <div>ย้าย <b id="gMoves">0</b> ครั้ง</div>
+      <div>ถูกที่ <b id="gProg">0%</b></div>
+    </div>
+    <div id="oppBox" hidden>
+      <span>คู่แข่ง: <b id="oppName"></b></span>
+      <div class="bar"><div id="oppBar"></div></div>
+      <span id="oppText">0%</span>
+    </div>
+    <div class="gamewrap">
+      <div id="board" class="board"></div>
+      <div class="side">
+        <p><b>ภาพต้นฉบับ</b></p>
+        <img id="refImg" alt="ภาพต้นฉบับ">
+        <p class="small">คลิกชิ้นที่ 1 แล้วคลิกชิ้นที่ 2 เพื่อสลับตำแหน่ง</p>
+        <label><input type="checkbox" id="chkHint"> ไฮไลต์ชิ้นที่ถูกที่</label>
+        <button id="btnGiveUp">ยอมแพ้</button>
+      </div>
+    </div>
+    <div id="countdown" class="overlay" hidden></div>
+  </section>
+
+  <!-- ========== หน้าผลลัพธ์ ========== -->
+  <section id="scr-result" class="screen card" hidden>
+    <h2 id="resTitle">ผลการเล่น</h2>
+    <div id="resBody"></div>
+    <div class="btns">
+      <button class="primary" data-go="setup">เล่นอีกครั้ง</button>
+      <button data-go="board">ดูตารางคะแนน</button>
+    </div>
+  </section>
+
+  <!-- ========== ตารางคะแนน ========== -->
+  <section id="scr-board" class="screen card" hidden>
+    <h2>🏆 ตารางคะแนน (เร็วที่สุด 20 อันดับ)</h2>
+    <div class="row">
+      <select id="boardPieces">
+        <option value="">ทุกขนาด</option>
+        <option value="9">9 ชิ้น</option><option value="16">16 ชิ้น</option>
+        <option value="25">25 ชิ้น</option><option value="36">36 ชิ้น</option>
+        <option value="49">49 ชิ้น</option><option value="64">64 ชิ้น</option>
+      </select>
+      <span class="small" id="boardSrc"></span>
+    </div>
+    <table>
+      <thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ชิ้น</th><th>เวลา</th><th>ย้าย</th><th>โหมด</th><th>วันที่</th></tr></thead>
+      <tbody id="boardBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<!-- ========== กล่องตั้งค่า Turso ========== -->
+<dialog id="dlgDb">
+  <h2>⚙️ เชื่อมต่อฐานข้อมูล Turso</h2>
+  <label class="t">Database URL</label>
+  <input id="dbUrl" placeholder="libsql://ชื่อฐานข้อมูล-ชื่อผู้ใช้.turso.io">
+  <label class="t">Auth Token</label>
+  <input id="dbToken" placeholder="eyJhbGciOi...">
+  <p class="small">ถ้ายังไม่ได้ตั้งค่า เกมจะบันทึกผลไว้ในเบราว์เซอร์เครื่องนี้แทน (โหมด 2 เครื่องต้องใช้ Turso)</p>
+  <p class="msg" id="dbMsg"></p>
+  <div class="btns">
+    <button class="primary" id="btnDbSave">ทดสอบและบันทึก</button>
+    <button id="btnDbClear">ล้างการตั้งค่า</button>
+    <button id="btnDbClose">ปิด</button>
+  </div>
+</dialog>
+
+<script>
+/* =====================================================================
+   ส่วนที่ 1 : ตัวช่วยทั่วไป
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// แปลงมิลลิวินาทีเป็น "นาที:วินาที.ทศนิยม"
+function fmt(ms){
+  const m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60, d = Math.floor(ms / 100) % 10;
+  return `${pad(m)}:${pad(s)}.${d}`;
+}
+
+// สลับลำดับแบบสุ่ม (Fisher–Yates) โดยไม่ให้ออกมาเรียงถูกอยู่แล้ว
+function shuffle(total){
+  const a = [...Array(total).keys()];
+  do {
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+  } while (a.every((v, i) => v === i));
+  return a;
+}
+
+// สลับหน้าจอ
+function show(name){
+  document.querySelectorAll('.screen').forEach(s => s.hidden = (s.id !== 'scr-' + name));
+}
+
+/* =====================================================================
+   ส่วนที่ 2 : เชื่อมต่อฐานข้อมูล Turso ผ่าน HTTP API (/v2/pipeline)
+   ===================================================================== */
+const DB = {
+  url:   localStorage.getItem('turso_url')   || '',
+  token: localStorage.getItem('turso_token') || '',
+  get ready(){ return !!(this.url && this.token); }
+};
+
+function toArg(v){
+  if (v === null || v === undefined) return { type: 'null' };
+  if (typeof v === 'number')
+    return Number.isInteger(v) ? { type: 'integer', value: String(v) } : { type: 'float', value: v };
+  return { type: 'text', value: String(v) };
+}
+
+// ฟังก์ชันหลักสำหรับรันคำสั่ง SQL  —  ใช้ ? แทนค่าที่ส่งเข้ามาเสมอ (กัน SQL Injection)
+async function sql(query, params = []){
+  const url = DB.url.replace(/^libsql:\/\//, 'https://').replace(/\/$/, '') + '/v2/pipeline';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + DB.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: [
+      { type: 'execute', stmt: { sql: query, args: params.map(toArg) } },
+      { type: 'close' }
+    ]})
+  });
+  if (!res.ok) throw new Error('Turso ตอบกลับ HTTP ' + res.status);
+  const data = await res.json();
+  const r = data.results[0];
+  if (r.type === 'error') throw new Error(r.error.message);
+
+  const { cols, rows, affected_row_count } = r.response.result;
+  const out = rows.map(row => {
+    const obj = {};
+    row.forEach((cell, i) => {
+      obj[cols[i].name] = cell.type === 'null' ? null
+                        : cell.type === 'integer' ? Number(cell.value)
+                        : cell.value;
+    });
+    return obj;
+  });
+  out.affected = affected_row_count;
+  return out;
+}
+
+// สร้างตารางถ้ายังไม่มี (ดูคำอธิบายแต่ละคอลัมน์ใน schema.sql)
+async function initTables(){
+  await sql(`CREATE TABLE IF NOT EXISTS results (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_name TEXT    NOT NULL,
+      pieces      INTEGER NOT NULL,
+      time_ms     INTEGER NOT NULL,
+      moves       INTEGER NOT NULL,
+      mode        TEXT    NOT NULL,
+      room_code   TEXT,
+      created_at  TEXT    NOT NULL)`);
+  await sql(`CREATE TABLE IF NOT EXISTS rooms (
+      code           TEXT PRIMARY KEY,
+      pieces         INTEGER NOT NULL,
+      image          TEXT    NOT NULL,
+      order_json     TEXT    NOT NULL,
+      host_name      TEXT    NOT NULL,
+      guest_name     TEXT,
+      status         TEXT    NOT NULL DEFAULT 'waiting',
+      started_at     INTEGER,
+      host_progress  INTEGER DEFAULT 0,
+      guest_progress INTEGER DEFAULT 0,
+      host_time      INTEGER,
+      guest_time     INTEGER,
+      created_at     INTEGER NOT NULL)`);
+}
+
+function updateDbStatus(){
+  $('dbStatus').classList.toggle('on', DB.ready);
+  $('btnDb').title = DB.ready ? 'เชื่อมต่อ Turso แล้ว' : 'ยังไม่ได้เชื่อมต่อ (บันทึกในเครื่อง)';
+}
+
+/* =====================================================================
+   ส่วนที่ 3 : บันทึกผล / อ่านตารางคะแนน
+   ===================================================================== */
+async function saveResult(r){
+  const row = { ...r, created_at: new Date().toISOString() };
+  if (DB.ready){
+    try {
+      await sql(`INSERT INTO results (player_name, pieces, time_ms, moves, mode, room_code, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [row.player_name, row.pieces, row.time_ms, row.moves, row.mode, row.room_code ?? null, row.created_at]);
+      return;
+    } catch (e){ console.error('บันทึกลง Turso ไม่สำเร็จ', e); }
+  }
+  // สำรอง: เก็บในเบราว์เซอร์
+  const list = JSON.parse(localStorage.getItem('local_results') || '[]');
+  list.push(row);
+  localStorage.setItem('local_results', JSON.stringify(list));
+}
+
+async function loadBoard(){
+  const p = $('boardPieces').value;
+  let rows;
+  $('boardBody').innerHTML = '<tr><td colspan="7">กำลังโหลด...</td></tr>';
+  try {
+    if (DB.ready){
+      rows = await sql(
+        `SELECT player_name, pieces, time_ms, moves, mode, created_at
+           FROM results ${p ? 'WHERE pieces = ?' : ''}
+          ORDER BY time_ms ASC LIMIT 20`, p ? [Number(p)] : []);
+      $('boardSrc').textContent = 'ข้อมูลจาก Turso';
+    } else {
+      rows = JSON.parse(localStorage.getItem('local_results') || '[]')
+        .filter(r => !p || r.pieces == p)
+        .sort((a, b) => a.time_ms - b.time_ms).slice(0, 20);
+      $('boardSrc').textContent = 'ข้อมูลในเครื่องนี้ (ยังไม่ได้เชื่อม Turso)';
+    }
+  } catch (e){
+    $('boardBody').innerHTML = `<tr><td colspan="7">โหลดไม่สำเร็จ: ${esc(e.message)}</td></tr>`;
+    return;
+  }
+  const modeName = { solo: 'คนเดียว', turn: 'ผลัดกัน', online: 'แข่ง 2 เครื่อง' };
+  $('boardBody').innerHTML = rows.length ? rows.map((r, i) => `
+    <tr><td>${i + 1}</td><td>${esc(r.player_name)}</td><td>${r.pieces}</td>
+        <td><b>${fmt(r.time_ms)}</b></td><td>${r.moves}</td><td>${modeName[r.mode] || esc(r.mode)}</td>
+        <td>${new Date(r.created_at).toLocaleString('th-TH')}</td></tr>`).join('')
+    : '<tr><td colspan="7">ยังไม่มีข้อมูล</td></tr>';
+}
+
+/* =====================================================================
+   ส่วนที่ 4 : จัดการรูปภาพ (ครอปเป็นสี่เหลี่ยมจัตุรัสและย่อขนาด)
+   ===================================================================== */
+const IMG_SIZE = 500;
+
+function cropToSquare(img){
+  const c = document.createElement('canvas');
+  c.width = c.height = IMG_SIZE;
+  const s = Math.min(img.width, img.height);
+  c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, IMG_SIZE, IMG_SIZE);
+  return c.toDataURL('image/jpeg', 0.8);   // ข้อความ base64 ขนาดเล็ก ส่งเข้าฐานข้อมูลได้
+}
+
+function loadImageFile(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(cropToSquare(img));
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// รูปตั้งต้น (วาดด้วยโค้ด) กรณีไม่ได้แนบรูป
+function defaultImage(){
+  const c = document.createElement('canvas');
+  c.width = c.height = IMG_SIZE;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, IMG_SIZE, IMG_SIZE);
+  grad.addColorStop(0, '#7fb8e6'); grad.addColorStop(1, '#f7c6d9');
+  g.fillStyle = grad; g.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
+  const colors = ['#ffd166', '#06d6a0', '#ef476f', '#118ab2', '#ffffff'];
+  for (let i = 0; i < 18; i++){
+    g.fillStyle = colors[i % colors.length]; g.globalAlpha = .75;
+    g.beginPath();
+    g.arc((i * 97) % IMG_SIZE, (i * 151) % IMG_SIZE, 25 + (i * 13) % 50, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.globalAlpha = 1; g.fillStyle = '#1f3347';
+  g.font = 'bold 72px Sarabun, sans-serif'; g.textAlign = 'center';
+  g.fillText('JIGSAW', IMG_SIZE / 2, IMG_SIZE / 2 + 24);
+  return c.toDataURL('image/jpeg', 0.85);
+}
+
+/* =====================================================================
+   ส่วนที่ 5 : ตัวเกมจิ๊กซอว์ (คลิกสองชิ้นเพื่อสลับตำแหน่ง)
+   order[ตำแหน่ง] = หมายเลขชิ้น   → ต่อเสร็จเมื่อ order[i] === i ทุกช่อง
+   ===================================================================== */
+class Puzzle {
+  constructor(el, img, n, order, callbacks){
+    Object.assign(this, { el, n, order, cb: callbacks });
+    this.moves = 0; this.sel = -1; this.enabled = false; this.hint = false;
+    el.innerHTML = '';
+    el.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+    el.style.setProperty('--img', `url(${img})`);
+    this.tiles = order.map((_, pos) => {
+      const d = document.createElement('div');
+      d.className = 'tile';
+      d.onclick = () => this.click(pos);
+      el.appendChild(d);
+      return d;
+    });
+    this.paintAll();
+  }
+  paint(pos){
+    const id = this.order[pos], n = this.n, t = this.tiles[pos];
+    const row = Math.floor(id / n), col = id % n;
+    t.style.backgroundSize = `${n * 100}% ${n * 100}%`;
+    t.style.backgroundPosition = `${col * 100 / (n - 1)}% ${row * 100 / (n - 1)}%`;
+    t.classList.toggle('ok', this.hint && id === pos);
+    t.classList.toggle('sel', pos === this.sel);
+  }
+  paintAll(){ this.tiles.forEach((_, p) => this.paint(p)); }
+  click(pos){
+    if (!this.enabled) return;
+    if (this.sel < 0){ this.sel = pos; this.paint(pos); return; }   // เลือกชิ้นแรก
+    const a = this.sel; this.sel = -1;
+    if (a !== pos){
+      [this.order[a], this.order[pos]] = [this.order[pos], this.order[a]];  // สลับ
+      this.moves++;
+    }
+    this.paint(a); this.paint(pos);
+    if (a !== pos){
+      this.cb.onMove?.(this);
+      if (this.isSolved()){ this.enabled = false; this.cb.onSolved?.(this); }
+    }
+  }
+  correct(){ return this.order.filter((id, p) => id === p).length; }
+  progress(){ return Math.round(this.correct() * 100 / this.order.length); }
+  isSolved(){ return this.correct() === this.order.length; }
+  setHint(v){ this.hint = v; this.paintAll(); }
+}
+
+/* =====================================================================
+   ส่วนที่ 6 : ตัวจับเวลา / นับถอยหลัง / การ poll ข้อมูล
+   ===================================================================== */
+const timer = {
+  start: 0, id: null,
+  begin(){
+    this.start = performance.now();
+    this.id = setInterval(() => $('gTimer').textContent = fmt(performance.now() - this.start), 100);
+  },
+  stop(){
+    clearInterval(this.id); this.id = null;
+    const ms = Math.round(performance.now() - this.start);
+    $('gTimer').textContent = fmt(ms);
+    return ms;
+  }
+};
+
+// นับถอยหลังจนถึงเวลา untilMs (epoch ms)
+function countdown(untilMs){
+  return new Promise(resolve => {
+    const ov = $('countdown'); ov.hidden = false;
+    const tick = () => {
+      const left = untilMs - Date.now();
+      if (left <= 0){ ov.hidden = true; resolve(); return; }
+      ov.textContent = Math.ceil(left / 1000);
+      setTimeout(tick, 100);
+    };
+    tick();
+  });
+}
+
+const state = { mode: 'solo', n: 4, image: null, puzzle: null, pollId: null, room: null, onMove: null };
+
+function poll(fn, ms = 1500){
+  stopPoll();
+  const run = async () => { try { await fn(); } catch (e){ console.error(e); } };
+  run();
+  state.pollId = setInterval(run, ms);
+}
+function stopPoll(){ clearInterval(state.pollId); state.pollId = null; }
+
+function leaveGame(){
+  stopPoll();
+  if (timer.id) timer.stop();
+  if (state.puzzle) state.puzzle.enabled = false;
+  $('countdown').hidden = true;
+  state.onMove = null;
+}
+
+/* =====================================================================
+   ส่วนที่ 7 : เล่น 1 รอบ (ใช้ร่วมกันทุกโหมด)
+   ===================================================================== */
+async function playRound(name, order, startAt, onDone){
+  show('game');
+  $('gPlayer').textContent = name;
+  $('gMoves').textContent = 0;
+  $('gTimer').textContent = '00:00.0';
+  $('refImg').src = state.image;
+  state.puzzle = new Puzzle($('board'), state.image, state.n, order.slice(), {
+    onMove: p => {
+      $('gMoves').textContent = p.moves;
+      $('gProg').textContent = p.progress() + '%';
+      state.onMove?.(p);
+    },
+    onSolved: p => onDone({ time_ms: timer.stop(), moves: p.moves })
+  });
+  $('gProg').textContent = state.puzzle.progress() + '%';
+  state.puzzle.setHint($('chkHint').checked);
+  await countdown(startAt);
+  if (!state.puzzle) return;
+  state.puzzle.enabled = true;
+  timer.begin();
+}
+
+/* ---------- โหมด 1 : เล่นคนเดียว ---------- */
+function startSolo(name){
+  $('oppBox').hidden = true;
+  playRound(name, shuffle(state.n ** 2), Date.now() + 3000, async r => {
+    await saveResult({ player_name: name, pieces: state.n ** 2, ...r, mode: 'solo' });
+    showResult('🎉 ต่อเสร็จแล้ว!',
+      `<p class="win">${esc(name)} ใช้เวลา ${fmt(r.time_ms)}</p><p>ย้ายทั้งหมด ${r.moves} ครั้ง</p>`);
+  });
+}
+
+/* ---------- โหมด 2 : ผลัดกันเล่นบนเครื่องเดียว (ใช้ภาพสลับชุดเดียวกัน) ---------- */
+function startTurn(names){
+  $('oppBox').hidden = true;
+  const order = shuffle(state.n ** 2);
+  const results = [];
+  const runTurn = i => {
+    show('turn');
+    $('turnTitle').textContent = `ตาของ ${names[i]}`;
+    $('turnText').textContent = i === 0
+      ? 'ให้ผู้เล่นคนที่ 2 หันหน้าออกไปก่อนนะ 😄'
+      : `${names[0]} ทำเวลาไว้ ${fmt(results[0].time_ms)} — ลองทำให้เร็วกว่านี้!`;
+    $('btnTurnGo').onclick = () => playRound(names[i], order, Date.now() + 3000, async r => {
+      results.push({ name: names[i], ...r });
+      await saveResult({ player_name: names[i], pieces: state.n ** 2, ...r, mode: 'turn' });
+      if (i === 0) runTurn(1); else showCompare(results[0], results[1]);
+    });
+  };
+  runTurn(0);
+}
+
+function showCompare(a, b){
+  let head;
+  if (a.time_ms === b.time_ms) head = 'เสมอกัน!';
+  else head = `🏆 ${esc((a.time_ms < b.time_ms ? a : b).name)} ชนะ!`;
+  const line = r => r.time_ms < 0
+    ? `<tr><td>${esc(r.name)}</td><td colspan="2">ยอมแพ้</td></tr>`
+    : `<tr><td>${esc(r.name)}</td><td>${fmt(r.time_ms)}</td><td>${r.moves}</td></tr>`;
+  showResult('ผลการแข่งขัน', `<p class="win">${head}</p>
+    <table><tr><th>ผู้เล่น</th><th>เวลา</th><th>ย้าย</th></tr>${line(a)}${line(b)}</table>
+    <p class="small">ต่างกัน ${fmt(Math.abs(a.time_ms - b.time_ms))}</p>`);
+}
+
+function showResult(title, html){
+  leaveGame();
+  $('resTitle').textContent = title;
+  $('resBody').innerHTML = html;
+  show('result');
+}
+
+/* ---------- โหมด 3 : แข่งพร้อมกัน 2 เครื่องผ่าน Turso ---------- */
+async function hostRoom(name){
+  const order = shuffle(state.n ** 2);
+  let code;
+  for (let i = 0; ; i++){
+    code = String(Math.floor(1000 + Math.random() * 9000));
+    try {
+      await sql(`INSERT INTO rooms (code, pieces, image, order_json, host_name, status, created_at)
+                 VALUES (?, ?, ?, ?, ?, 'waiting', ?)`,
+        [code, state.n ** 2, state.image, JSON.stringify(order), name, Date.now()]);
+      break;
+    } catch (e){
+      if (i >= 4 || !/UNIQUE|constraint/i.test(e.message)) throw e;   // รหัสซ้ำ → สุ่มใหม่
+    }
+  }
+  state.room = { code, order, role: 'host', me: name, opp: null };
+  $('lobbyCode').textContent = code;
+  $('lobbyInfo').textContent = 'รอผู้เล่นคนที่ 2 เข้าห้อง...';
+  $('btnHostStart').hidden = true;
+  show('lobby');
+  poll(async () => {
+    const [r] = await sql('SELECT guest_name FROM rooms WHERE code = ?', [code]);
+    if (r?.guest_name){
+      state.room.opp = r.guest_name;
+      $('lobbyInfo').textContent = `✅ ${r.guest_name} เข้าห้องแล้ว พร้อมแข่ง!`;
+      $('btnHostStart').hidden = false;
+    }
+  });
+}
+
+async function hostStart(){
+  const startedAt = Date.now() + 4000;    // ให้เวลาอีกฝั่งเห็นสถานะก่อนเริ่มจริง
+  await sql(`UPDATE rooms SET status = 'playing', started_at = ? WHERE code = ?`, [startedAt, state.room.code]);
+  beginOnline(startedAt);
+}
+
+async function joinRoom(name, code){
+  const [r] = await sql(`SELECT pieces, image, order_json, host_name, guest_name, status
+                           FROM rooms WHERE code = ?`, [code]);
+  if (!r) throw new Error('ไม่พบห้องรหัสนี้');
+  if (r.guest_name || r.status !== 'waiting') throw new Error('ห้องนี้เต็มหรือเริ่มแข่งไปแล้ว');
+  const upd = await sql('UPDATE rooms SET guest_name = ? WHERE code = ? AND guest_name IS NULL', [name, code]);
+  if (!upd.affected) throw new Error('มีคนเข้าห้องนี้ไปก่อนแล้ว');
+
+  state.n = Math.sqrt(r.pieces);
+  state.image = r.image;
+  state.room = { code, order: JSON.parse(r.order_json), role: 'guest', me: name, opp: r.host_name };
+  $('lobbyCode').textContent = code;
+  $('lobbyInfo').textContent = `เข้าห้องของ ${r.host_name} แล้ว — รอเจ้าของห้องกดเริ่ม (${r.pieces} ชิ้น)`;
+  $('btnHostStart').hidden = true;
+  show('lobby');
+  poll(async () => {
+    const [s] = await sql('SELECT status, started_at FROM rooms WHERE code = ?', [code]);
+    if (s?.status === 'playing') beginOnline(s.started_at);
+  });
+}
+
+// ส่งความคืบหน้าแบบไม่ยิงคำขอซ้อนกัน (ส่งค่าล่าสุดเสมอ)
+function makeSender(fn){
+  let busy = false, next = null;
+  const send = async v => {
+    if (busy){ next = v; return; }
+    busy = true;
+    try { await fn(v); } catch (e){ console.error(e); }
+    busy = false;
+    if (next !== null){ const n = next; next = null; send(n); }
+  };
+  return send;
+}
+
+function beginOnline(startedAt){
+  stopPoll();
+  const R = state.room;
+  const me = R.role, opp = me === 'host' ? 'guest' : 'host';   // ใช้ได้แค่ 2 ค่านี้เท่านั้น
+  R.myTime = null; R.oppTime = null;
+  $('oppBox').hidden = false;
+  $('oppName').textContent = R.opp;
+  $('oppBar').style.width = '0%';
+  $('oppText').textContent = '0%';
+
+  const sendProgress = makeSender(p =>
+    sql(`UPDATE rooms SET ${me}_progress = ? WHERE code = ?`, [p, R.code]));
+  state.onMove = p => sendProgress(p.progress());
+
+  // อ่านสถานะคู่แข่งทุก 1.5 วินาที
+  poll(async () => {
+    const [r] = await sql(`SELECT ${opp}_progress AS p, ${opp}_time AS t FROM rooms WHERE code = ?`, [R.code]);
+    if (!r) return;
+    $('oppBar').style.width = (r.p || 0) + '%';
+    if (r.t !== null){
+      R.oppTime = r.t;
+      $('oppText').textContent = r.t < 0 ? 'ยอมแพ้' : '🏁 เสร็จแล้ว ' + fmt(r.t);
+    } else $('oppText').textContent = (r.p || 0) + '%';
+    if (R.myTime !== null && R.oppTime !== null) finishOnline();
+    else if (R.myTime !== null) renderOnlineWaiting();
+  });
+
+  playRound(R.me, R.order, startedAt, async r => {
+    R.myTime = r.time_ms; R.myMoves = r.moves;
+    await sql(`UPDATE rooms SET ${me}_time = ?, ${me}_progress = 100 WHERE code = ?`, [r.time_ms, R.code]);
+    await saveResult({ player_name: R.me, pieces: state.n ** 2, ...r, mode: 'online', room_code: R.code });
+    if (R.oppTime !== null) finishOnline(); else renderOnlineWaiting();
+  });
+}
+
+function renderOnlineWaiting(){
+  const R = state.room;
+  $('resTitle').textContent = R.myTime < 0 ? 'คุณยอมแพ้' : '🎉 ต่อเสร็จแล้ว!';
+  $('resBody').innerHTML = (R.myTime < 0 ? '' : `<p class="win">${esc(R.me)} ใช้เวลา ${fmt(R.myTime)}</p>`)
+    + `<p>⏳ รอ ${esc(R.opp)} ต่อให้เสร็จ...</p>`;
+  show('result');
+}
+
+function finishOnline(){
+  const R = state.room;
+  stopPoll();
+  const a = { name: R.me, time_ms: R.myTime, moves: R.myMoves ?? '-' };
+  const b = { name: R.opp, time_ms: R.oppTime, moves: '-' };
+  if (a.time_ms < 0 && b.time_ms < 0) showResult('ผลการแข่งขัน', '<p>ทั้งสองคนยอมแพ้ ไม่มีผู้ชนะ</p>');
+  else if (a.time_ms < 0) showResult('ผลการแข่งขัน', `<p class="win">🏆 ${esc(b.name)} ชนะ!</p><p>คุณยอมแพ้</p>`);
+  else if (b.time_ms < 0) showResult('ผลการแข่งขัน', `<p class="win">🏆 ${esc(a.name)} ชนะ!</p><p>${esc(b.name)} ยอมแพ้ · เวลาของคุณ ${a.time_ms >= 0 ? fmt(a.time_ms) : '-'}</p>`);
+  else showCompare(a, b);
+}
+
+/* =====================================================================
+   ส่วนที่ 8 : ปุ่มและเหตุการณ์ต่าง ๆ บนหน้าจอ
+   ===================================================================== */
+function refreshSetupForm(){
+  state.mode = document.querySelector('input[name=mode]:checked').value;
+  const role = document.querySelector('input[name=role]:checked').value;
+  const online = state.mode === 'online';
+  $('roleBox').hidden = !online;
+  $('name2Box').hidden = state.mode !== 'turn';
+  $('codeBox').hidden = !(online && role === 'guest');
+  $('puzzleOpts').hidden = online && role === 'guest';
+  $('setupMsg').textContent = online && !DB.ready ? 'โหมดนี้ต้องเชื่อมต่อ Turso ก่อน (กดปุ่ม ⚙️ ฐานข้อมูล)' : '';
+}
+document.querySelectorAll('input[name=mode], input[name=role]').forEach(el => el.onchange = refreshSetupForm);
+
+$('fileIn').onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  state.image = await loadImageFile(f);
+  $('preview').src = state.image;
+};
+
+$('btnStart').onclick = async () => {
+  const name1 = $('name1').value.trim();
+  const msg = $('setupMsg');
+  msg.textContent = '';
+  if (!name1) { msg.textContent = 'กรุณากรอกชื่อผู้เล่น'; return; }
+  state.n = Math.sqrt(Number($('pieces').value));
+  if (!state.image) state.image = $('preview').src;
+
+  try {
+    if (state.mode === 'solo') startSolo(name1);
+    else if (state.mode === 'turn'){
+      const name2 = $('name2').value.trim();
+      if (!name2) { msg.textContent = 'กรุณากรอกชื่อผู้เล่นคนที่ 2'; return; }
+      startTurn([name1, name2]);
+    } else {
+      if (!DB.ready) { msg.textContent = 'โหมดนี้ต้องเชื่อมต่อ Turso ก่อน'; return; }
+      const role = document.querySelector('input[name=role]:checked').value;
+      $('btnStart').disabled = true;
+      if (role === 'host') await hostRoom(name1);
+      else {
+        const code = $('roomCodeIn').value.trim();
+        if (!/^\d{4}$/.test(code)) { msg.textContent = 'รหัสห้องต้องเป็นตัวเลข 4 หลัก'; return; }
+        await joinRoom(name1, code);
+      }
+    }
+  } catch (e){
+    msg.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+  } finally {
+    $('btnStart').disabled = false;
+  }
+};
+
+$('btnHostStart').onclick = () => hostStart().catch(e => alert(e.message));
+$('btnLeave').onclick = () => { leaveGame(); show('setup'); };
+$('chkHint').onchange = e => state.puzzle?.setHint(e.target.checked);
+
+$('btnGiveUp').onclick = async () => {
+  if (!confirm('ยอมแพ้รอบนี้ใช่ไหม?')) return;
+  if (state.mode === 'online' && state.room){
+    const R = state.room;
+    R.myTime = -1;
+    if (timer.id) timer.stop();
+    state.puzzle.enabled = false;
+    await sql(`UPDATE rooms SET ${R.role}_time = -1 WHERE code = ?`, [R.code]).catch(console.error);
+    if (R.oppTime !== null) finishOnline(); else renderOnlineWaiting();
+  } else {
+    leaveGame(); show('setup');
+  }
+};
+
+document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+  leaveGame();
+  show(b.dataset.go);
+  if (b.dataset.go === 'board') loadBoard();
+});
+$('boardPieces').onchange = loadBoard;
+
+// ----- กล่องตั้งค่าฐานข้อมูล -----
+$('btnDb').onclick = () => {
+  $('dbUrl').value = DB.url; $('dbToken').value = DB.token; $('dbMsg').textContent = '';
+  $('dlgDb').showModal();
+};
+$('btnDbClose').onclick = () => $('dlgDb').close();
+$('btnDbClear').onclick = () => {
+  DB.url = DB.token = '';
+  localStorage.removeItem('turso_url'); localStorage.removeItem('turso_token');
+  updateDbStatus(); refreshSetupForm(); $('dlgDb').close();
+};
+$('btnDbSave').onclick = async () => {
+  DB.url = $('dbUrl').value.trim(); DB.token = $('dbToken').value.trim();
+  $('dbMsg').style.color = 'var(--muted)'; $('dbMsg').textContent = 'กำลังทดสอบการเชื่อมต่อ...';
+  try {
+    await initTables();
+    localStorage.setItem('turso_url', DB.url); localStorage.setItem('turso_token', DB.token);
+    $('dbMsg').style.color = 'var(--ok)'; $('dbMsg').textContent = '✅ เชื่อมต่อสำเร็จและสร้างตารางเรียบร้อย';
+  } catch (e){
+    DB.url = localStorage.getItem('turso_url') || ''; DB.token = localStorage.getItem('turso_token') || '';
+    $('dbMsg').style.color = 'var(--bad)'; $('dbMsg').textContent = '❌ เชื่อมต่อไม่ได้: ' + e.message;
+  }
+  updateDbStatus(); refreshSetupForm();
+};
+
+// ----- เริ่มต้นโปรแกรม -----
+$('preview').src = defaultImage();
+updateDbStatus();
+refreshSetupForm();
+if (DB.ready) initTables().catch(e => console.warn('เชื่อม Turso ไม่ได้:', e.message));
+</script>
+</body>
+</html>
